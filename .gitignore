@@ -26,9 +26,8 @@ venv/
 # Data and generated output
 data/raw/
 data/merged/
-
-# Keep output artifacts, but still ignore any generated video files
-!outputs/**/*.log
+outputs/**
+!outputs/.gitkeep
 
 # Model weights and large binaries
 # models/ is intentionally tracked for this repository
