@@ -25,10 +25,12 @@ venv/
 # Data and generated output
 data/raw/
 data/merged/
-outputs/
+
+# Keep output artifacts, but still ignore any generated video files
+!outputs/**/*.log
 
 # Model weights and large binaries
-models/
+# models/ is intentionally tracked for this repository
 
 # Video files
 *.mp4
