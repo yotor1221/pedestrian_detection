@@ -28,6 +28,7 @@ data/merged/
 
 # Keep output artifacts, but still ignore any generated video files
 !outputs/**/*.log
+outputs/Merkato6PM/full_tracking_Merkato6PM.csv
 
 # Model weights and large binaries
 # models/ is intentionally tracked for this repository
