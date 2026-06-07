@@ -1,0 +1,25 @@
+# PhD Research: High-Altitude 4K Pedestrian Detection System
+# Optimized for YOLO26 Medium with SAHI integration
+
+# Core Computer Vision & Deep Learning
+ultralytics>=8.0.196  # YOLO26 support
+sahi==0.11.13         # Slicing Aided Hyper Inference
+opencv-python==4.13.0.92  # 4K video I/O processing
+
+# Data Analysis & Export
+pandas==3.0.3         # Structured CSV log management
+numpy==2.4.6         # Numerical operations
+
+# Progress Tracking & UI
+tqdm==4.66.1          # Professional progress bars with ETA
+
+# High-Performance Computing (Optional GPU Support)
+torch>=2.0.0          # PyTorch backend for YOLO26
+torchvision>=0.15.0   # Vision utilities
+
+# Video Processing & Codecs
+ffmpeg-python==0.2.0  # Advanced video codec handling
+
+# System Configuration & Logging
+pyyaml==6.0.3         # Configuration management
+psutil==5.9.5         # Memory monitoring for 8GB RAM constraint

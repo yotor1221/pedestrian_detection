@@ -1,0 +1,18 @@
+{
+  "segment_info": {
+    "name": "part3.mp4",
+    "start": 60,
+    "end": 92,
+    "duration": 32,
+    "has_overlap": true
+  },
+  "video_info": {
+    "duration": 300.667033,
+    "width": 3840,
+    "height": 2160,
+    "fps": 29.97002997002997,
+    "codec": "hevc",
+    "size": 3754672818
+  },
+  "overlap_duration": 2
+}

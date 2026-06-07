@@ -1,0 +1,41 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.Python
+
+# Virtual environment
+venv/
+.env
+
+# Logs and runtime files
+*.log
+*.pot
+*.pyc
+
+# IDE/editor files
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Data and generated output
+data/raw/
+data/merged/
+outputs/
+
+# Model weights and large binaries
+models/
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# System files
+.DS_Store
+Thumbs.db

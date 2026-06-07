@@ -1,0 +1,182 @@
+[
+  {
+    "segment_num": 1,
+    "video_path": "data/segments/test_split/DJI_0715/part1.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part1_metadata.json",
+    "segment_info": {
+      "name": "part1.mp4",
+      "start": 0,
+      "end": 32,
+      "duration": 32,
+      "has_overlap": false
+    },
+    "handoff_info": {
+      "has_overlap": false,
+      "overlap_start": null,
+      "previous_segment": null,
+      "next_segment": "part2.mp4"
+    }
+  },
+  {
+    "segment_num": 2,
+    "video_path": "data/segments/test_split/DJI_0715/part2.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part2_metadata.json",
+    "segment_info": {
+      "name": "part2.mp4",
+      "start": 30,
+      "end": 62,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 30,
+      "previous_segment": "part1.mp4",
+      "next_segment": "part3.mp4"
+    }
+  },
+  {
+    "segment_num": 3,
+    "video_path": "data/segments/test_split/DJI_0715/part3.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part3_metadata.json",
+    "segment_info": {
+      "name": "part3.mp4",
+      "start": 60,
+      "end": 92,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 60,
+      "previous_segment": "part2.mp4",
+      "next_segment": "part4.mp4"
+    }
+  },
+  {
+    "segment_num": 4,
+    "video_path": "data/segments/test_split/DJI_0715/part4.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part4_metadata.json",
+    "segment_info": {
+      "name": "part4.mp4",
+      "start": 90,
+      "end": 122,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 90,
+      "previous_segment": "part3.mp4",
+      "next_segment": "part5.mp4"
+    }
+  },
+  {
+    "segment_num": 5,
+    "video_path": "data/segments/test_split/DJI_0715/part5.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part5_metadata.json",
+    "segment_info": {
+      "name": "part5.mp4",
+      "start": 120,
+      "end": 152,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 120,
+      "previous_segment": "part4.mp4",
+      "next_segment": "part6.mp4"
+    }
+  },
+  {
+    "segment_num": 6,
+    "video_path": "data/segments/test_split/DJI_0715/part6.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part6_metadata.json",
+    "segment_info": {
+      "name": "part6.mp4",
+      "start": 150,
+      "end": 182,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 150,
+      "previous_segment": "part5.mp4",
+      "next_segment": "part7.mp4"
+    }
+  },
+  {
+    "segment_num": 7,
+    "video_path": "data/segments/test_split/DJI_0715/part7.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part7_metadata.json",
+    "segment_info": {
+      "name": "part7.mp4",
+      "start": 180,
+      "end": 212,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 180,
+      "previous_segment": "part6.mp4",
+      "next_segment": "part8.mp4"
+    }
+  },
+  {
+    "segment_num": 8,
+    "video_path": "data/segments/test_split/DJI_0715/part8.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part8_metadata.json",
+    "segment_info": {
+      "name": "part8.mp4",
+      "start": 210,
+      "end": 242,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 210,
+      "previous_segment": "part7.mp4",
+      "next_segment": "part9.mp4"
+    }
+  },
+  {
+    "segment_num": 9,
+    "video_path": "data/segments/test_split/DJI_0715/part9.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part9_metadata.json",
+    "segment_info": {
+      "name": "part9.mp4",
+      "start": 240,
+      "end": 272,
+      "duration": 32,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 240,
+      "previous_segment": "part8.mp4",
+      "next_segment": "part10.mp4"
+    }
+  },
+  {
+    "segment_num": 10,
+    "video_path": "data/segments/test_split/DJI_0715/part10.mp4",
+    "metadata_path": "data/segments/test_split/DJI_0715/part10_metadata.json",
+    "segment_info": {
+      "name": "part10.mp4",
+      "start": 270,
+      "end": 300.667033,
+      "duration": 30.667033000000004,
+      "has_overlap": true
+    },
+    "handoff_info": {
+      "has_overlap": true,
+      "overlap_start": 270,
+      "previous_segment": "part9.mp4",
+      "next_segment": null
+    }
+  }
+]
