@@ -214,6 +214,8 @@ def process_full_video(
                 width, height, fps, total_frames, video_info["file_size_mb"],
             )
 
+            detector.initialize_spatial_grid(width, height, grid_size=50)
+
             with VideoWriter(
                 output_path=str(output_video),
                 fps=fps,
@@ -256,6 +258,13 @@ def process_full_video(
                             interp["confidence"] = float(interp.get("confidence", 0.0)) * 0.9
                             interp["interpolated"] = True
                             detections.append(interp)
+
+                    detector.update_spatial_grid_counts(
+                        detections=detections,
+                        frame_width=width,
+                        frame_height=height,
+                        grid_size=50,
+                    )
 
                     pedestrian_count = detector.get_pedestrian_count(detections)
                     total_pedestrians += pedestrian_count
@@ -340,6 +349,18 @@ def process_full_video(
                 logger.info("=" * 72)
                 logger.info("PROCESSING COMPLETE")
                 logger.info("=" * 72)
+                grid_image_path = project_dir / f"{project_key}.png"
+                detector.save_spatial_grid_visualization(
+                    output_path=str(grid_image_path),
+                    frame_width=width,
+                    frame_height=height,
+                    grid_size=50,
+                )
+                logger.info("Spatial grid image    : %s", grid_image_path)
+                logger.info(
+                    "Spatial total pedestrians: %d",
+                    detector.get_total_spatial_pedestrian_count(),
+                )
                 logger.info("Frames written (1:1)   : %d / %d", frame_count, total_frames)
                 logger.info("Inference frames       : %d (stride=%d)", processed_frames, frame_stride)
                 logger.info("Pedestrian detections  : %d total", total_pedestrians)

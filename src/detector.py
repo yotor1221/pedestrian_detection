@@ -124,6 +124,16 @@ class DronePedestrianDetector:
             self.logger.error(f"Critical: Failed to initialize SAHI model: {e}")
             raise
         
+        # Spatial grid counting state for cumulative pedestrian occupancy analysis
+        self.spatial_grid_size = 50
+        self.spatial_grid_rows = 50
+        self.spatial_grid_cols = 50
+        self.frame_width = None
+        self.frame_height = None
+        self.spatial_grid_cell_track_ids = {}
+        self.spatial_grid_counts = {}
+        self.all_spatial_track_ids = set()
+
         # Initialize simple tracking for persistent tracking
         if enable_tracking:
             try:
@@ -307,7 +317,7 @@ class DronePedestrianDetector:
                     if track_id not in assigned_tracks:
                         distance = ((center_x - track_x)**2 + (center_y - track_y)**2)**0.5
                         if distance < min_distance and distance < self.max_distance:
-                            min_distance = distance
+                            min_distance = distance 
                             best_track_id = track_id
                 
                 if best_track_id is not None:
@@ -361,9 +371,9 @@ class DronePedestrianDetector:
                 return self.tracking_inference(frame, frame_id)
             
             # Map detections for tracking
-            current_positions = []
+            current_positions = []  
             for det in sahi_detections:
-                bbox = det['bbox']
+                bbox = det['bbox']   
                 center_x = (bbox[0] + bbox[2]) // 2
                 center_y = (bbox[1] + bbox[3]) // 2
                 det['center'] = (center_x, center_y)
@@ -458,6 +468,232 @@ class DronePedestrianDetector:
             # Fallback to standard inference if SAHI fails
             return self.standard_inference(frame)
     
+    def initialize_spatial_grid(self, frame_width: int, frame_height: int, grid_size: int = 50) -> None:
+        """Reset and initialize the 50x50 spatial grid state for a video."""
+        self.frame_width = int(frame_width)
+        self.frame_height = int(frame_height)
+        self.spatial_grid_size = int(grid_size)
+        self.spatial_grid_rows = int(grid_size)
+        self.spatial_grid_cols = int(grid_size)
+        self.spatial_grid_cell_track_ids = {}
+        self.spatial_grid_counts = {}
+        self.all_spatial_track_ids = set()
+
+    def map_point_to_grid_cell(self, x: float, y: float, frame_width: Optional[int] = None,
+                               frame_height: Optional[int] = None,
+                               grid_size: Optional[int] = None) -> Tuple[int, int]:
+        """Map a point to a zero-based (row, col) index in a square grid."""
+        width = int(frame_width or self.frame_width or 1)
+        height = int(frame_height or self.frame_height or 1)
+        size = int(grid_size or self.spatial_grid_size or 50)
+
+        clamped_x = int(np.clip(x, 0, max(width - 1, 0)))
+        clamped_y = int(np.clip(y, 0, max(height - 1, 0)))
+
+        col = int((clamped_x / width) * size)
+        row = int((clamped_y / height) * size)
+
+        col = max(0, min(size - 1, col))
+        row = max(0, min(size - 1, row))
+        return row, col
+
+    def update_spatial_grid_counts(self, detections: List[Dict[str, Any]], frame_width: Optional[int] = None,
+                                   frame_height: Optional[int] = None,
+                                   grid_size: Optional[int] = None) -> Dict[Tuple[int, int], int]:
+        """Accumulate unique pedestrian IDs per cell across the full video."""
+        width = int(frame_width or self.frame_width or 1)
+        height = int(frame_height or self.frame_height or 1)
+        size = int(grid_size or self.spatial_grid_size or 50)
+
+        if not hasattr(self, 'spatial_grid_cell_track_ids') or self.spatial_grid_cell_track_ids is None:
+            self.spatial_grid_cell_track_ids = {}
+
+        self.frame_width = width
+        self.frame_height = height
+        self.spatial_grid_size = size
+        self.spatial_grid_rows = size
+        self.spatial_grid_cols = size
+
+        for detection in detections:
+            class_name = str(detection.get('class_name', '')).lower()
+            if not any(token in class_name for token in ['person', 'people', 'pedestrian']):
+                continue
+
+            track_id = detection.get('track_id')
+            if track_id is None:
+                continue
+
+            try:
+                track_id_value = int(track_id)
+            except (TypeError, ValueError):
+                continue
+
+            center = detection.get('center')
+            if center is None and 'bbox' in detection:
+                x1, y1, x2, y2 = detection['bbox']
+                center = ((x1 + x2) // 2, (y1 + y2) // 2)
+            if center is None:
+                continue
+
+            row, col = self.map_point_to_grid_cell(center[0], center[1], width, height, size)
+            cell_key = (row, col)
+            if cell_key not in self.spatial_grid_cell_track_ids:
+                self.spatial_grid_cell_track_ids[cell_key] = set()
+
+            self.spatial_grid_cell_track_ids[cell_key].add(track_id_value)
+            self.all_spatial_track_ids.add(track_id_value)
+
+        self.spatial_grid_counts = {
+            (row, col): len(self.spatial_grid_cell_track_ids.get((row, col), set()))
+            for row in range(size)
+            for col in range(size)
+        }
+        return self.spatial_grid_counts
+
+    def get_spatial_grid_counts(self) -> Dict[Tuple[int, int], int]:
+        """Return the cumulative unique-pedestrian count for every grid cell."""
+        if not self.spatial_grid_counts:
+            size = self.spatial_grid_size or 50
+            self.spatial_grid_counts = {
+                (row, col): 0 for row in range(size) for col in range(size)
+            }
+        return self.spatial_grid_counts
+
+    def get_spatial_grid_cell_color(self, count: Any) -> Tuple[int, int, int]:
+        """Return the fill color for a grid cell based on the unique pedestrian count."""
+        try:
+            count_value = int(float(count))
+        except (TypeError, ValueError):
+            count_value = 0
+
+        if count_value == 0:
+            return (255, 255, 255)
+        if count_value == 1:
+            return (240, 240, 240)
+        if 2 <= count_value <= 5:
+            return (220, 220, 220)
+        if 6 <= count_value <= 15:
+            return (200, 200, 200)
+        if 16 <= count_value <= 30:
+            return (150, 150, 150)
+        if 31 <= count_value <= 50:
+            return (100, 100, 100)
+        return (40, 40, 40)
+
+    def get_total_spatial_pedestrian_count(self) -> int:
+        """Return the total number of unique pedestrians encountered in the video.
+
+        This is derived from the global unique track ID set, not by summing cell
+        counts or incrementing per frame.
+        """
+        if self.all_spatial_track_ids:
+            return len(self.all_spatial_track_ids)
+        return len({
+            track_id
+            for ids in self.spatial_grid_cell_track_ids.values()
+            for track_id in ids
+        })
+
+    def save_spatial_grid_visualization(self, output_path: str, frame_width: Optional[int] = None,
+                                        frame_height: Optional[int] = None,
+                                        grid_size: Optional[int] = None) -> str:
+        """Save a standalone high-resolution 50x50 spatial grid visualization."""
+        width = int(frame_width or self.frame_width or 1280)
+        height = int(frame_height or self.frame_height or 720)
+        size = int(grid_size or self.spatial_grid_size or 50)
+
+        counts = self.get_spatial_grid_counts()
+        total_unique = self.get_total_spatial_pedestrian_count()
+
+        canvas_width = 1500
+        canvas_height = 1500
+        header_height = 160
+        bottom_margin = 40
+        grid_height = canvas_height - header_height - bottom_margin
+        cell_width = canvas_width // size
+        cell_height = grid_height // size
+
+        image = np.full((canvas_height, canvas_width, 3), 255, dtype=np.uint8)
+
+        header_text = f"TOTAL UNIQUE PEDESTRIAN: {total_unique}"
+        header_font = cv2.FONT_HERSHEY_SIMPLEX
+        header_scale = 1.2
+        header_thickness = 2
+        header_size, header_baseline = cv2.getTextSize(header_text, header_font, header_scale, header_thickness)
+        header_x = max(20, (canvas_width - header_size[0]) // 2)
+        header_y = header_size[1] + 30
+        cv2.putText(image, header_text, (header_x, header_y), header_font, header_scale, (0, 0, 0), header_thickness, cv2.LINE_AA)
+
+        subtitle = f"50x50 grid of unique IDs per cell (counts only count each ID once)"
+        subtitle_scale = 0.7
+        subtitle_thickness = 1
+        subtitle_size, _ = cv2.getTextSize(subtitle, header_font, subtitle_scale, subtitle_thickness)
+        subtitle_x = max(20, (canvas_width - subtitle_size[0]) // 2)
+        subtitle_y = header_y + subtitle_size[1] + 16
+        cv2.putText(image, subtitle, (subtitle_x, subtitle_y), header_font, subtitle_scale, (50, 50, 50), subtitle_thickness, cv2.LINE_AA)
+
+        def cell_color(count: int) -> Tuple[int, int, int]:
+            try:
+                count_value = int(round(float(count)))
+            except (TypeError, ValueError):
+                count_value = 0
+
+            if count_value == 0:
+                return (255, 255, 255)
+            elif count_value == 1:
+                return (240, 240, 240)
+            elif 2 <= count_value <= 5:
+                return (215, 215, 215)
+            elif 6 <= count_value <= 15:
+                return (200, 200, 200)
+            elif 16 <= count_value <= 30:
+                return (150, 150, 150)
+            elif 31 <= count_value <= 50:
+                return (100, 100, 100)
+            else:
+                return (40, 40, 40)
+
+        start_y = header_height
+        for row in range(size):
+            for col in range(size):
+                count = counts.get((row, col), 0)
+                fill_color = self.get_spatial_grid_cell_color(count)
+
+                x1 = col * cell_width
+                y1 = start_y + row * cell_height
+                x2 = min((col + 1) * cell_width, canvas_width)
+                y2 = min(start_y + (row + 1) * cell_height, header_height + grid_height)
+
+                cv2.rectangle(image, (x1, y1), (x2 - 1, y2 - 1), fill_color, -1)
+                cv2.rectangle(image, (x1, y1), (x2 - 1, y2 - 1), (0, 0, 0), 1)
+
+                label = str(count)
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                font_scale = min(0.7, max(0.28, min(cell_width, cell_height) / 24.0))
+                brightness = (fill_color[0] * 0.299 + fill_color[1] * 0.587 + fill_color[2] * 0.114)
+                if brightness > 200:
+                    thickness = 1
+                    text_color = (0, 0, 0)
+                elif brightness > 150:
+                    thickness = 2
+                    text_color = (0, 0, 0)
+                else:
+                    thickness = 3
+                    text_color = (0, 0, 0)
+
+                text_size, baseline = cv2.getTextSize(label, font, font_scale, thickness)
+                text_width, text_height = text_size
+                text_x = x1 + (cell_width - text_width) // 2
+                text_y = y1 + (cell_height + text_height) // 2
+                cv2.putText(image, label, (text_x, text_y), font, font_scale, text_color, thickness, cv2.LINE_AA)
+ 
+        output_file = os.fspath(output_path)
+        output_dir = os.path.dirname(output_file)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+        cv2.imwrite(output_file, image)
+        return output_file
+
     def draw_detections(self, 
                        frame: np.ndarray, 
                        detections: List[Dict[str, Any]], 
