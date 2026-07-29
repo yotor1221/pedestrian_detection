@@ -1,4 +1,4 @@
-﻿# System Architecture & Functional Specification
+# System Architecture & Functional Specification
 
 **Project:** 4K Aerial Drone Pedestrian Detection and Tracking System  
 **Institution:** Addis Ababa Institute of Technology (AAiT)  

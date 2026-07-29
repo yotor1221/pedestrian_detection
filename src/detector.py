@@ -468,24 +468,53 @@ class DronePedestrianDetector:
             # Fallback to standard inference if SAHI fails
             return self.standard_inference(frame)
     
-    def initialize_spatial_grid(self, frame_width: int, frame_height: int, grid_size: int = 50) -> None:
-        """Reset and initialize the 50x50 spatial grid state for a video."""
+    def resolve_grid_resolution(self, grid_size: Any) -> Dict[str, Any]:
+        """Resolve a user-facing grid-size option to a matrix size and label."""
+        if isinstance(grid_size, str):
+            normalized = grid_size.strip().lower()
+        else:
+            normalized = str(grid_size).strip().lower()
+
+        mapping = {
+            "50cm": {"matrix_size": 50, "label": "50cm"},
+            "1m": {"matrix_size": 25, "label": "1m"},
+            "2m": {"matrix_size": 12, "label": "2m"},
+        }
+
+        if normalized in mapping:
+            return mapping[normalized]
+
+        if isinstance(grid_size, int):
+            resolved = int(grid_size)
+            return {"matrix_size": resolved, "label": f"{resolved}x{resolved}"}
+
+        raise ValueError(f"Unsupported grid size '{grid_size}'. Expected '50cm', '1m', or '2m'.")
+
+    def initialize_spatial_grid(self, frame_width: int, frame_height: int, grid_size: Any = 50) -> None:
+        """Reset and initialize the spatial grid state for a video."""
+        resolution = self.resolve_grid_resolution(grid_size)
+        matrix_size = int(resolution["matrix_size"])
+
         self.frame_width = int(frame_width)
         self.frame_height = int(frame_height)
-        self.spatial_grid_size = int(grid_size)
-        self.spatial_grid_rows = int(grid_size)
-        self.spatial_grid_cols = int(grid_size)
+        self.spatial_grid_size = matrix_size
+        self.spatial_grid_rows = matrix_size
+        self.spatial_grid_cols = matrix_size
+        self.spatial_grid_resolution_label = resolution["label"]
         self.spatial_grid_cell_track_ids = {}
         self.spatial_grid_counts = {}
         self.all_spatial_track_ids = set()
 
     def map_point_to_grid_cell(self, x: float, y: float, frame_width: Optional[int] = None,
                                frame_height: Optional[int] = None,
-                               grid_size: Optional[int] = None) -> Tuple[int, int]:
+                               grid_size: Any = None) -> Tuple[int, int]:
         """Map a point to a zero-based (row, col) index in a square grid."""
         width = int(frame_width or self.frame_width or 1)
         height = int(frame_height or self.frame_height or 1)
-        size = int(grid_size or self.spatial_grid_size or 50)
+        if grid_size is None:
+            size = int(self.spatial_grid_size or 50)
+        else:
+            size = int(self.resolve_grid_resolution(grid_size)["matrix_size"])
 
         clamped_x = int(np.clip(x, 0, max(width - 1, 0)))
         clamped_y = int(np.clip(y, 0, max(height - 1, 0)))
@@ -499,11 +528,14 @@ class DronePedestrianDetector:
 
     def update_spatial_grid_counts(self, detections: List[Dict[str, Any]], frame_width: Optional[int] = None,
                                    frame_height: Optional[int] = None,
-                                   grid_size: Optional[int] = None) -> Dict[Tuple[int, int], int]:
+                                   grid_size: Any = None) -> Dict[Tuple[int, int], int]:
         """Accumulate unique pedestrian IDs per cell across the full video."""
         width = int(frame_width or self.frame_width or 1)
         height = int(frame_height or self.frame_height or 1)
-        size = int(grid_size or self.spatial_grid_size or 50)
+        if grid_size is None:
+            size = int(self.spatial_grid_size or 50)
+        else:
+            size = int(self.resolve_grid_resolution(grid_size)["matrix_size"])
 
         if not hasattr(self, 'spatial_grid_cell_track_ids') or self.spatial_grid_cell_track_ids is None:
             self.spatial_grid_cell_track_ids = {}
@@ -562,23 +594,24 @@ class DronePedestrianDetector:
     def get_spatial_grid_cell_color(self, count: Any) -> Tuple[int, int, int]:
         """Return the fill color for a grid cell based on the unique pedestrian count."""
         try:
-            count_value = int(float(count))
+            count_value = int(round(float(count)))
         except (TypeError, ValueError):
             count_value = 0
 
         if count_value == 0:
             return (255, 255, 255)
-        if count_value == 1:
+        elif count_value == 1:
             return (240, 240, 240)
-        if 2 <= count_value <= 5:
-            return (220, 220, 220)
-        if 6 <= count_value <= 15:
+        elif 2 <= count_value <= 5:
+            return (225, 225, 225)
+        elif 6 <= count_value <= 15:
             return (200, 200, 200)
-        if 16 <= count_value <= 30:
-            return (150, 150, 150)
-        if 31 <= count_value <= 50:
-            return (100, 100, 100)
-        return (40, 40, 40)
+        elif 16 <= count_value <= 30:
+            return (170, 170, 170)
+        elif 31 <= count_value <= 50:
+            return (125, 125, 125)
+        else:
+            return (70, 70, 70)
 
     def get_total_spatial_pedestrian_count(self) -> int:
         """Return the total number of unique pedestrians encountered in the video.
@@ -596,11 +629,13 @@ class DronePedestrianDetector:
 
     def save_spatial_grid_visualization(self, output_path: str, frame_width: Optional[int] = None,
                                         frame_height: Optional[int] = None,
-                                        grid_size: Optional[int] = None) -> str:
-        """Save a standalone high-resolution 50x50 spatial grid visualization."""
+                                        grid_size: Any = None) -> str:
+        """Save a standalone high-resolution spatial grid visualization."""
         width = int(frame_width or self.frame_width or 1280)
         height = int(frame_height or self.frame_height or 720)
-        size = int(grid_size or self.spatial_grid_size or 50)
+        resolution = self.resolve_grid_resolution(grid_size if grid_size is not None else (self.spatial_grid_resolution_label or self.spatial_grid_size or 50))
+        size = int(resolution["matrix_size"])
+        resolution_label = resolution["label"]
 
         counts = self.get_spatial_grid_counts()
         total_unique = self.get_total_spatial_pedestrian_count()
@@ -610,8 +645,8 @@ class DronePedestrianDetector:
         header_height = 160
         bottom_margin = 40
         grid_height = canvas_height - header_height - bottom_margin
-        cell_width = canvas_width // size
-        cell_height = grid_height // size
+        cell_width = max(1, canvas_width // size)
+        cell_height = max(1, grid_height // size)
 
         image = np.full((canvas_height, canvas_width, 3), 255, dtype=np.uint8)
 
@@ -624,7 +659,7 @@ class DronePedestrianDetector:
         header_y = header_size[1] + 30
         cv2.putText(image, header_text, (header_x, header_y), header_font, header_scale, (0, 0, 0), header_thickness, cv2.LINE_AA)
 
-        subtitle = f"50x50 grid of unique IDs per cell (counts only count each ID once)"
+        subtitle = f"{size}x{size} grid of unique IDs per cell ({resolution_label} per cell; counts only count each ID once)"
         subtitle_scale = 0.7
         subtitle_thickness = 1
         subtitle_size, _ = cv2.getTextSize(subtitle, header_font, subtitle_scale, subtitle_thickness)
@@ -643,15 +678,15 @@ class DronePedestrianDetector:
             elif count_value == 1:
                 return (240, 240, 240)
             elif 2 <= count_value <= 5:
-                return (215, 215, 215)
+                return (225, 225, 225)
             elif 6 <= count_value <= 15:
                 return (200, 200, 200)
             elif 16 <= count_value <= 30:
-                return (150, 150, 150)
+                return (170, 170, 170)
             elif 31 <= count_value <= 50:
-                return (100, 100, 100)
+                return (125, 125, 125)
             else:
-                return (40, 40, 40)
+                return (70, 70, 70)
 
         start_y = header_height
         for row in range(size):
@@ -669,17 +704,11 @@ class DronePedestrianDetector:
 
                 label = str(count)
                 font = cv2.FONT_HERSHEY_SIMPLEX
-                font_scale = min(0.7, max(0.28, min(cell_width, cell_height) / 24.0))
-                brightness = (fill_color[0] * 0.299 + fill_color[1] * 0.587 + fill_color[2] * 0.114)
-                if brightness > 200:
-                    thickness = 1
-                    text_color = (0, 0, 0)
-                elif brightness > 150:
-                    thickness = 2
-                    text_color = (0, 0, 0)
-                else:
-                    thickness = 3
-                    text_color = (0, 0, 0)
+                font_scale = 0.24 if size >= 25 else 0.28
+                if size <= 12:
+                    font_scale = 0.32
+                thickness = 1
+                text_color = (0, 0, 0)
 
                 text_size, baseline = cv2.getTextSize(label, font, font_scale, thickness)
                 text_width, text_height = text_size

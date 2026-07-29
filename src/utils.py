@@ -88,7 +88,7 @@ class VideoStreamer:
             raise
     
     def close(self) -> None:
-        """Release video capture resources."""
+        """Release video capture resources.""" 
         if self.cap is not None:
             self.cap.release()
             self.cap = None
@@ -353,7 +353,10 @@ class ProgressTracker:
             desc=self.description,
             unit="frames",
             unit_scale=False,
-            dynamic_ncols=True
+            dynamic_ncols=True,
+            disable=False,
+            miniters=1,
+            ascii=True,
         )
         self.start_time = time.time()
     
@@ -381,6 +384,10 @@ class ProgressTracker:
             print(f"Elapsed time: {elapsed_time:.2f} seconds")
             print(f"Average FPS: {fps:.2f}")
             print(f"{'='*60}")
+        else:
+            elapsed_time = time.time() - self.start_time
+            fps = self.total_frames / elapsed_time if elapsed_time > 0 else 0
+            print(f"{self.description}: {self.total_frames} frames processed in {elapsed_time:.2f}s ({fps:.2f} FPS)")
 
 def get_system_memory_usage() -> Dict[str, float]:
     """

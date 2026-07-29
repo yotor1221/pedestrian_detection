@@ -146,6 +146,7 @@ def process_full_video(
     overlap_ratio: float = 0.1,
     device: Optional[str] = None,
     project_key: Optional[str] = None,
+    grid_size: str = "50cm",
 ) -> int:
     """End-to-end single-stream processing of one raw 4K video."""
     if not video_path.exists():
@@ -214,7 +215,7 @@ def process_full_video(
                 width, height, fps, total_frames, video_info["file_size_mb"],
             )
 
-            detector.initialize_spatial_grid(width, height, grid_size=50)
+            detector.initialize_spatial_grid(width, height, grid_size=grid_size)
 
             with VideoWriter(
                 output_path=str(output_video),
@@ -263,7 +264,7 @@ def process_full_video(
                         detections=detections,
                         frame_width=width,
                         frame_height=height,
-                        grid_size=50,
+                        grid_size=grid_size,
                     )
 
                     pedestrian_count = detector.get_pedestrian_count(detections)
@@ -349,12 +350,12 @@ def process_full_video(
                 logger.info("=" * 72)
                 logger.info("PROCESSING COMPLETE")
                 logger.info("=" * 72)
-                grid_image_path = project_dir / f"{project_key}.png"
+                grid_image_path = project_dir / f"{project_key}_grid_counts_{grid_size}.png"
                 detector.save_spatial_grid_visualization(
                     output_path=str(grid_image_path),
                     frame_width=width,
                     frame_height=height,
-                    grid_size=50,
+                    grid_size=grid_size,
                 )
                 logger.info("Spatial grid image    : %s", grid_image_path)
                 logger.info(
@@ -459,6 +460,13 @@ Examples:
         help="Force device (cpu, cuda, mps). Auto-detected when omitted.",
     )
     parser.add_argument(
+        "--grid-size", "-g",
+        type=str,
+        default="50cm",
+        choices=["50cm", "1m", "2m"],
+        help="Spatial grid resolution: 50cm (50x50), 1m (25x25), or 2m (12x12)",
+    )
+    parser.add_argument(
         "--verbose", "-V", action="store_true",
         help="Enable verbose (DEBUG) logging",
     )
@@ -513,6 +521,7 @@ def main(argv: Optional[list] = None) -> int:
         overlap_ratio=args.overlap_ratio,
         device=args.device,
         project_key=project_key,
+        grid_size=args.grid_size,
     )
 
 

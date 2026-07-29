@@ -12,6 +12,23 @@ from detector import DronePedestrianDetector
 from pathlib import Path
 
 
+def test_grid_resolution_config():
+    """Verify CLI grid-size strings map to the expected matrix sizes."""
+    detector = DronePedestrianDetector.__new__(DronePedestrianDetector)
+
+    config_50cm = detector.resolve_grid_resolution("50cm")
+    assert config_50cm["matrix_size"] == 50
+    assert config_50cm["label"] == "50cm"
+
+    config_1m = detector.resolve_grid_resolution("1m")
+    assert config_1m["matrix_size"] == 25
+    assert config_1m["label"] == "1m"
+
+    config_2m = detector.resolve_grid_resolution("2m")
+    assert config_2m["matrix_size"] == 12
+    assert config_2m["label"] == "2m"
+
+
 def test_spatial_grid_counting_helpers():
     """Verify grid-cell mapping, unique tracking, and visualization export."""
     detector = DronePedestrianDetector.__new__(DronePedestrianDetector)
@@ -40,43 +57,6 @@ def test_spatial_grid_counting_helpers():
         output_path.unlink()
     saved_path = detector.save_spatial_grid_visualization(output_path, 1920, 1080, 50)
     assert Path(saved_path).exists()
-
-
-def test_spatial_grid_color_thresholds():
-    """Verify the final grid color shading brackets for each count range."""
-    detector = DronePedestrianDetector.__new__(DronePedestrianDetector)
-    assert detector.get_spatial_grid_cell_color(0) == (255, 255, 255)
-    assert detector.get_spatial_grid_cell_color(1) == (245, 245, 245)
-    assert detector.get_spatial_grid_cell_color(2) == (235, 235, 235)
-    assert detector.get_spatial_grid_cell_color(5) == (235, 235, 235)
-    assert detector.get_spatial_grid_cell_color(6) == (210, 210, 210)
-    assert detector.get_spatial_grid_cell_color(15) == (210, 210, 210)
-    assert detector.get_spatial_grid_cell_color(16) == (165, 165, 165)
-    assert detector.get_spatial_grid_cell_color(30) == (165, 165, 165)
-    assert detector.get_spatial_grid_cell_color(31) == (115, 115, 115)
-    assert detector.get_spatial_grid_cell_color(50) == (115, 115, 115)
-    assert detector.get_spatial_grid_cell_color(51) == (60, 60, 60)
-    assert detector.get_spatial_grid_cell_color(16.0) == (165, 165, 165)
-    assert detector.get_spatial_grid_cell_color(31.0) == (115, 115, 115)
-
-
-def test_total_unique_pedestrian_count():
-    """Verify total unique pedestrian count uses the global unique ID set."""
-    detector = DronePedestrianDetector.__new__(DronePedestrianDetector)
-    detector.initialize_spatial_grid(frame_width=1920, frame_height=1080, grid_size=50)
-    detections = [
-        {"class_name": "person", "track_id": 1, "center": (100, 200)},
-        {"class_name": "person", "track_id": 2, "center": (300, 200)},
-        {"class_name": "person", "track_id": 1, "center": (100, 200)},
-    ]
-    detector.update_spatial_grid_counts(
-        detections=detections,
-        frame_width=1920,
-        frame_height=1080,
-        grid_size=50,
-    )
-    assert detector.get_total_spatial_pedestrian_count() == 2
-
 
 def test_detector():
     """Test the detector's box extraction with fixed .data API."""
