@@ -130,8 +130,12 @@ class DronePedestrianDetector:
         self.spatial_grid_cols = 50
         self.frame_width = None
         self.frame_height = None
+        self.spatial_grid_sizes = {}
+        self.spatial_grid_resolution_labels = []
+        self.spatial_grid_resolution_label = None
         self.spatial_grid_cell_track_ids = {}
         self.spatial_grid_counts = {}
+        self.spatial_grid_breaks = {}
         self.all_spatial_track_ids = set()
 
         # Initialize simple tracking for persistent tracking
@@ -492,18 +496,32 @@ class DronePedestrianDetector:
 
     def initialize_spatial_grid(self, frame_width: int, frame_height: int, grid_size: Any = 50) -> None:
         """Reset and initialize the spatial grid state for a video."""
-        resolution = self.resolve_grid_resolution(grid_size)
-        matrix_size = int(resolution["matrix_size"])
-
         self.frame_width = int(frame_width)
         self.frame_height = int(frame_height)
-        self.spatial_grid_size = matrix_size
-        self.spatial_grid_rows = matrix_size
-        self.spatial_grid_cols = matrix_size
-        self.spatial_grid_resolution_label = resolution["label"]
+        self.all_spatial_track_ids = set()
+        self.spatial_grid_sizes = {}
+        self.spatial_grid_resolution_labels = []
         self.spatial_grid_cell_track_ids = {}
         self.spatial_grid_counts = {}
-        self.all_spatial_track_ids = set()
+        self.spatial_grid_breaks = {}
+        self.add_spatial_grid_resolution("50cm")
+        self.add_spatial_grid_resolution("1m")
+        if grid_size is not None:
+            self.add_spatial_grid_resolution(grid_size)
+
+    def add_spatial_grid_resolution(self, grid_size: Any) -> None:
+        """Add a new resolution to maintain counts for the same video run."""
+        resolution = self.resolve_grid_resolution(grid_size)
+        label = resolution["label"]
+        matrix_size = int(resolution["matrix_size"])
+
+        self.spatial_grid_sizes[label] = matrix_size
+        if label not in self.spatial_grid_resolution_labels:
+            self.spatial_grid_resolution_labels.append(label)
+        self.spatial_grid_resolution_label = label
+        self.spatial_grid_cell_track_ids[label] = {}
+        self.spatial_grid_counts[label] = {}
+        self.spatial_grid_breaks[label] = []
 
     def map_point_to_grid_cell(self, x: float, y: float, frame_width: Optional[int] = None,
                                frame_height: Optional[int] = None,
@@ -532,19 +550,35 @@ class DronePedestrianDetector:
         """Accumulate unique pedestrian IDs per cell across the full video."""
         width = int(frame_width or self.frame_width or 1)
         height = int(frame_height or self.frame_height or 1)
-        if grid_size is None:
-            size = int(self.spatial_grid_size or 50)
-        else:
-            size = int(self.resolve_grid_resolution(grid_size)["matrix_size"])
 
         if not hasattr(self, 'spatial_grid_cell_track_ids') or self.spatial_grid_cell_track_ids is None:
             self.spatial_grid_cell_track_ids = {}
 
         self.frame_width = width
         self.frame_height = height
-        self.spatial_grid_size = size
-        self.spatial_grid_rows = size
-        self.spatial_grid_cols = size
+
+        if grid_size is None:
+            grid_labels = list(self.spatial_grid_resolution_labels)
+        else:
+            grid_labels = [self.resolve_grid_resolution(grid_size)["label"]]
+
+        for label in grid_labels:
+            if label not in self.spatial_grid_cell_track_ids:
+                self.add_spatial_grid_resolution(label)
+
+        for label in grid_labels:
+            size = self.spatial_grid_sizes[label]
+            self.spatial_grid_sizes[label] = size
+            self.spatial_grid_rows = size
+            self.spatial_grid_cols = size
+
+            if label not in self.spatial_grid_counts:
+                self.spatial_grid_counts[label] = {}
+
+            if label not in self.spatial_grid_cell_track_ids or self.spatial_grid_cell_track_ids[label] is None:
+                self.spatial_grid_cell_track_ids[label] = {}
+
+        grid_label = grid_labels[0] if len(grid_labels) == 1 else None
 
         for detection in detections:
             class_name = str(detection.get('class_name', '')).lower()
@@ -567,51 +601,109 @@ class DronePedestrianDetector:
             if center is None:
                 continue
 
-            row, col = self.map_point_to_grid_cell(center[0], center[1], width, height, size)
-            cell_key = (row, col)
-            if cell_key not in self.spatial_grid_cell_track_ids:
-                self.spatial_grid_cell_track_ids[cell_key] = set()
-
-            self.spatial_grid_cell_track_ids[cell_key].add(track_id_value)
             self.all_spatial_track_ids.add(track_id_value)
 
-        self.spatial_grid_counts = {
-            (row, col): len(self.spatial_grid_cell_track_ids.get((row, col), set()))
-            for row in range(size)
-            for col in range(size)
-        }
-        return self.spatial_grid_counts
+            for label in grid_labels:
+                size = self.spatial_grid_sizes[label]
+                row, col = self.map_point_to_grid_cell(center[0], center[1], width, height, size)
+                cell_key = (row, col)
+                if cell_key not in self.spatial_grid_cell_track_ids[label]:
+                    self.spatial_grid_cell_track_ids[label][cell_key] = set()
+                self.spatial_grid_cell_track_ids[label][cell_key].add(track_id_value)
 
-    def get_spatial_grid_counts(self) -> Dict[Tuple[int, int], int]:
+        for label in grid_labels:
+            size = self.spatial_grid_sizes[label]
+            self.spatial_grid_counts[label] = {
+                (row, col): len(self.spatial_grid_cell_track_ids[label].get((row, col), set()))
+                for row in range(size)
+                for col in range(size)
+            }
+
+        return self.spatial_grid_counts[grid_labels[0]]
+
+    def get_spatial_grid_counts(self, grid_size: Any = None) -> Dict[Tuple[int, int], int]:
         """Return the cumulative unique-pedestrian count for every grid cell."""
-        if not self.spatial_grid_counts:
-            size = self.spatial_grid_size or 50
-            self.spatial_grid_counts = {
+        if grid_size is None:
+            if self.spatial_grid_resolution_label is not None:
+                grid_label = self.spatial_grid_resolution_label
+            elif "50cm" in self.spatial_grid_resolution_labels:
+                grid_label = "50cm"
+            elif self.spatial_grid_resolution_labels:
+                grid_label = self.spatial_grid_resolution_labels[0]
+            else:
+                grid_label = "50cm"
+        else:
+            grid_label = self.resolve_grid_resolution(grid_size)["label"]
+
+        if grid_label not in self.spatial_grid_counts or not self.spatial_grid_counts[grid_label]:
+            size = self.spatial_grid_sizes.get(grid_label, 50)
+            self.spatial_grid_counts[grid_label] = {
                 (row, col): 0 for row in range(size) for col in range(size)
             }
-        return self.spatial_grid_counts
+        return self.spatial_grid_counts[grid_label]
 
-    def get_spatial_grid_cell_color(self, count: Any) -> Tuple[int, int, int]:
-        """Return the fill color for a grid cell based on the unique pedestrian count."""
+    def compute_head_tail_breaks(self, grid_counts: Dict[Tuple[int, int], int], threshold: float = 0.4) -> List[float]:
+        """Compute Head/Tail breaks for the provided count matrix."""
+        values = np.array([count for count in grid_counts.values() if count > 0], dtype=np.float64)
+        breaks = [0.0]
+        if values.size == 0:
+            return breaks
+
+        current_values = values
+        while current_values.size > 0:
+            mean_value = float(current_values.mean())
+            head = current_values[current_values > mean_value]
+            breaks.append(mean_value)
+            if head.size == 0 or head.size / float(current_values.size) <= threshold:
+                break
+            current_values = head
+        return breaks
+
+    def get_red_heatmap_color(self, count: Any, breaks: List[float]) -> Tuple[int, int, int]:
+        """Map a count value into a red intensity color based on Head/Tail breaks."""
         try:
             count_value = int(round(float(count)))
         except (TypeError, ValueError):
             count_value = 0
-
-        if count_value == 0:
+        if count_value == 0 or not breaks or len(breaks) < 2:
             return (255, 255, 255)
-        elif count_value == 1:
-            return (240, 240, 240)
-        elif 2 <= count_value <= 5:
-            return (225, 225, 225)
-        elif 6 <= count_value <= 15:
-            return (200, 200, 200)
-        elif 16 <= count_value <= 30:
-            return (170, 170, 170)
-        elif 31 <= count_value <= 50:
-            return (125, 125, 125)
+
+        # thresholds derived from breaks (skip the initial 0.0)
+        thresholds = [int(round(b)) for b in breaks[1:]]
+
+        # If there is only one threshold (common for small sample sets),
+        # derive a linear t based on the threshold and the count value so
+        # we still get a visible pink->red ramp.
+        if len(thresholds) == 1:
+            thresh = thresholds[0]
+            if thresh <= 0:
+                # fallback to a mid-red for any positive count
+                t = 1.0
+            else:
+                t = float(min(count_value, thresh)) / float(thresh)
         else:
-            return (70, 70, 70)
+            level = 0
+            for threshold in thresholds:
+                if count_value <= threshold:
+                    break
+                level += 1
+            max_level = max(0, len(thresholds) - 1)
+            level = min(level, max_level)
+            n_levels = max(1, len(thresholds))
+            t = level / float(n_levels - 1) if n_levels > 1 else 0.0
+
+        # Ensure tiny non-zero counts map to a light pink instead of pure white
+        if count_value > 0 and t <= 0.0:
+            # light pink (B,G,R)
+            return (240, 200, 255)
+
+        # Map t to a red-spectrum color (r high, g/b reduced).
+        r = 255
+        g = int(max(60, 255 - (195 * t)))
+        b = int(max(60, 255 - (255 * t)))
+
+        # OpenCV uses BGR ordering, so return (b, g, r)
+        return (int(b), int(g), int(r))
 
     def get_total_spatial_pedestrian_count(self) -> int:
         """Return the total number of unique pedestrians encountered in the video.
@@ -633,18 +725,23 @@ class DronePedestrianDetector:
         """Save a standalone high-resolution spatial grid visualization."""
         width = int(frame_width or self.frame_width or 1280)
         height = int(frame_height or self.frame_height or 720)
-        resolution = self.resolve_grid_resolution(grid_size if grid_size is not None else (self.spatial_grid_resolution_label or self.spatial_grid_size or 50))
+        resolution = self.resolve_grid_resolution(
+            grid_size if grid_size is not None else "50cm"
+        )
         size = int(resolution["matrix_size"])
         resolution_label = resolution["label"]
 
-        counts = self.get_spatial_grid_counts()
+        counts = self.get_spatial_grid_counts(grid_size)
         total_unique = self.get_total_spatial_pedestrian_count()
+        breaks = self.compute_head_tail_breaks(counts, threshold=0.4)
+        self.spatial_grid_breaks[resolution_label] = breaks
 
         canvas_width = 1500
-        canvas_height = 1500
+        canvas_height = 1720
         header_height = 160
+        legend_height = 140
         bottom_margin = 40
-        grid_height = canvas_height - header_height - bottom_margin
+        grid_height = canvas_height - header_height - legend_height - bottom_margin
         cell_width = max(1, canvas_width // size)
         cell_height = max(1, grid_height // size)
 
@@ -654,12 +751,15 @@ class DronePedestrianDetector:
         header_font = cv2.FONT_HERSHEY_SIMPLEX
         header_scale = 1.2
         header_thickness = 2
-        header_size, header_baseline = cv2.getTextSize(header_text, header_font, header_scale, header_thickness)
+        header_size, _ = cv2.getTextSize(header_text, header_font, header_scale, header_thickness)
         header_x = max(20, (canvas_width - header_size[0]) // 2)
         header_y = header_size[1] + 30
         cv2.putText(image, header_text, (header_x, header_y), header_font, header_scale, (0, 0, 0), header_thickness, cv2.LINE_AA)
 
-        subtitle = f"{size}x{size} grid of unique IDs per cell ({resolution_label} per cell; counts only count each ID once)"
+        subtitle = (
+            f"{size}x{size} grid of unique IDs per cell ({resolution_label} per cell; "
+            "counts only count each ID once)"
+        )
         subtitle_scale = 0.7
         subtitle_thickness = 1
         subtitle_size, _ = cv2.getTextSize(subtitle, header_font, subtitle_scale, subtitle_thickness)
@@ -667,32 +767,11 @@ class DronePedestrianDetector:
         subtitle_y = header_y + subtitle_size[1] + 16
         cv2.putText(image, subtitle, (subtitle_x, subtitle_y), header_font, subtitle_scale, (50, 50, 50), subtitle_thickness, cv2.LINE_AA)
 
-        def cell_color(count: int) -> Tuple[int, int, int]:
-            try:
-                count_value = int(round(float(count)))
-            except (TypeError, ValueError):
-                count_value = 0
-
-            if count_value == 0:
-                return (255, 255, 255)
-            elif count_value == 1:
-                return (240, 240, 240)
-            elif 2 <= count_value <= 5:
-                return (225, 225, 225)
-            elif 6 <= count_value <= 15:
-                return (200, 200, 200)
-            elif 16 <= count_value <= 30:
-                return (170, 170, 170)
-            elif 31 <= count_value <= 50:
-                return (125, 125, 125)
-            else:
-                return (70, 70, 70)
-
         start_y = header_height
         for row in range(size):
             for col in range(size):
                 count = counts.get((row, col), 0)
-                fill_color = self.get_spatial_grid_cell_color(count)
+                fill_color = self.get_red_heatmap_color(count, breaks)
 
                 x1 = col * cell_width
                 y1 = start_y + row * cell_height
@@ -710,12 +789,48 @@ class DronePedestrianDetector:
                 thickness = 1
                 text_color = (0, 0, 0)
 
-                text_size, baseline = cv2.getTextSize(label, font, font_scale, thickness)
+                text_size, _ = cv2.getTextSize(label, font, font_scale, thickness)
                 text_width, text_height = text_size
                 text_x = x1 + (cell_width - text_width) // 2
                 text_y = y1 + (cell_height + text_height) // 2
                 cv2.putText(image, label, (text_x, text_y), font, font_scale, text_color, thickness, cv2.LINE_AA)
- 
+
+        legend_x = 20
+        legend_y = canvas_height - legend_height + 20
+        legend_title = f"Head/Tail breaks ({len(breaks) - 1} intervals)"
+        legend_scale = 0.65
+        legend_thickness = 1
+        cv2.putText(image, legend_title, (legend_x, legend_y), header_font, legend_scale, (0, 0, 0), legend_thickness, cv2.LINE_AA)
+
+        thresholds = [int(round(b)) for b in breaks[1:]]
+        legend_labels = ["0"]
+        legend_values = [0]
+        if thresholds:
+            for idx, threshold in enumerate(thresholds):
+                if idx == 0:
+                    legend_labels.append(f"1-{threshold}")
+                else:
+                    legend_labels.append(f"{thresholds[idx - 1] + 1}-{threshold}")
+                legend_values.append(threshold)
+            legend_labels.append(f">{thresholds[-1]}")
+            legend_values.append(thresholds[-1] + 1)
+
+        legend_box_y1 = legend_y + 26
+        legend_box_height = 32
+        legend_box_width = max(80, (canvas_width - 40) // max(1, len(legend_labels)))
+
+        for idx, label in enumerate(legend_labels):
+            box_x1 = legend_x + idx * legend_box_width
+            box_x2 = min(box_x1 + legend_box_width - 8, canvas_width - 20)
+            box_y2 = legend_box_y1 + legend_box_height
+            box_color = self.get_red_heatmap_color(legend_values[idx], breaks)
+            cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), box_color, -1)
+            cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), (0, 0, 0), 1)
+            label_size, _ = cv2.getTextSize(label, header_font, 0.5, 1)
+            label_x = box_x1 + (box_x2 - box_x1 - label_size[0]) // 2
+            label_y = box_y2 + label_size[1] + 10
+            cv2.putText(image, label, (label_x, label_y), header_font, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+
         output_file = os.fspath(output_path)
         output_dir = os.path.dirname(output_file)
         if output_dir:

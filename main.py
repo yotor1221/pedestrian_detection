@@ -264,7 +264,6 @@ def process_full_video(
                         detections=detections,
                         frame_width=width,
                         frame_height=height,
-                        grid_size=grid_size,
                     )
 
                     pedestrian_count = detector.get_pedestrian_count(detections)
@@ -350,14 +349,25 @@ def process_full_video(
                 logger.info("=" * 72)
                 logger.info("PROCESSING COMPLETE")
                 logger.info("=" * 72)
-                grid_image_path = project_dir / f"{project_key}_grid_counts_{grid_size}.png"
+                primary_path = project_dir / f"{project_key}_grid_counts_{grid_size}.png"
                 detector.save_spatial_grid_visualization(
-                    output_path=str(grid_image_path),
+                    output_path=str(primary_path),
                     frame_width=width,
                     frame_height=height,
                     grid_size=grid_size,
                 )
-                logger.info("Spatial grid image    : %s", grid_image_path)
+                logger.info("Spatial grid image    : %s", primary_path)
+
+                for secondary_grid in ["50cm", "1m"]:
+                    if secondary_grid != grid_size:
+                        secondary_path = project_dir / f"{project_key}_grid_counts_{secondary_grid}.png"
+                        detector.save_spatial_grid_visualization(
+                            output_path=str(secondary_path),
+                            frame_width=width,
+                            frame_height=height,
+                            grid_size=secondary_grid,
+                        )
+                        logger.info("Spatial grid image (%s): %s", secondary_grid, secondary_path)
                 logger.info(
                     "Spatial total pedestrians: %d",
                     detector.get_total_spatial_pedestrian_count(),

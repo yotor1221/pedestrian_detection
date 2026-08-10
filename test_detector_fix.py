@@ -55,8 +55,9 @@ def test_spatial_grid_counting_helpers():
     output_path = Path("outputs/grid_test_output.jpg")
     if output_path.exists():
         output_path.unlink()
-    saved_path = detector.save_spatial_grid_visualization(output_path, 1920, 1080, 50)
+    saved_path = detector.save_spatial_grid_visualization(output_path, 1920, 1080, "50cm")
     assert Path(saved_path).exists()
+    return True
 
 def test_detector():
     """Test the detector's box extraction with fixed .data API."""
