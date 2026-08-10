@@ -795,17 +795,18 @@ class DronePedestrianDetector:
                 text_y = y1 + (cell_height + text_height) // 2
                 cv2.putText(image, label, (text_x, text_y), font, font_scale, text_color, thickness, cv2.LINE_AA)
 
-        legend_x = 20
-        legend_y = canvas_height - legend_height + 20
-        legend_title = f"Head/Tail breaks ({len(breaks) - 1} intervals)"
-        legend_scale = 0.65
-        legend_thickness = 1
-        cv2.putText(image, legend_title, (legend_x, legend_y), header_font, legend_scale, (0, 0, 0), legend_thickness, cv2.LINE_AA)
-
+        # Only draw the legend if there are multiple Head/Tail intervals.
         thresholds = [int(round(b)) for b in breaks[1:]]
-        legend_labels = ["0"]
-        legend_values = [0]
-        if thresholds:
+        if len(thresholds) > 1:
+            legend_x = 20
+            legend_y = canvas_height - legend_height + 20
+            legend_title = f"Head/Tail breaks ({len(breaks) - 1} intervals)"
+            legend_scale = 0.65
+            legend_thickness = 1
+            cv2.putText(image, legend_title, (legend_x, legend_y), header_font, legend_scale, (0, 0, 0), legend_thickness, cv2.LINE_AA)
+
+            legend_labels = ["0"]
+            legend_values = [0]
             for idx, threshold in enumerate(thresholds):
                 if idx == 0:
                     legend_labels.append(f"1-{threshold}")
@@ -815,21 +816,21 @@ class DronePedestrianDetector:
             legend_labels.append(f">{thresholds[-1]}")
             legend_values.append(thresholds[-1] + 1)
 
-        legend_box_y1 = legend_y + 26
-        legend_box_height = 32
-        legend_box_width = max(80, (canvas_width - 40) // max(1, len(legend_labels)))
+            legend_box_y1 = legend_y + 26
+            legend_box_height = 32
+            legend_box_width = max(80, (canvas_width - 40) // max(1, len(legend_labels)))
 
-        for idx, label in enumerate(legend_labels):
-            box_x1 = legend_x + idx * legend_box_width
-            box_x2 = min(box_x1 + legend_box_width - 8, canvas_width - 20)
-            box_y2 = legend_box_y1 + legend_box_height
-            box_color = self.get_red_heatmap_color(legend_values[idx], breaks)
-            cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), box_color, -1)
-            cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), (0, 0, 0), 1)
-            label_size, _ = cv2.getTextSize(label, header_font, 0.5, 1)
-            label_x = box_x1 + (box_x2 - box_x1 - label_size[0]) // 2
-            label_y = box_y2 + label_size[1] + 10
-            cv2.putText(image, label, (label_x, label_y), header_font, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
+            for idx, label in enumerate(legend_labels):
+                box_x1 = legend_x + idx * legend_box_width
+                box_x2 = min(box_x1 + legend_box_width - 8, canvas_width - 20)
+                box_y2 = legend_box_y1 + legend_box_height
+                box_color = self.get_red_heatmap_color(legend_values[idx], breaks)
+                cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), box_color, -1)
+                cv2.rectangle(image, (box_x1, legend_box_y1), (box_x2, box_y2), (0, 0, 0), 1)
+                label_size, _ = cv2.getTextSize(label, header_font, 0.5, 1)
+                label_x = box_x1 + (box_x2 - box_x1 - label_size[0]) // 2
+                label_y = box_y2 + label_size[1] + 10
+                cv2.putText(image, label, (label_x, label_y), header_font, 0.5, (0, 0, 0), 1, cv2.LINE_AA)
 
         output_file = os.fspath(output_path)
         output_dir = os.path.dirname(output_file)
