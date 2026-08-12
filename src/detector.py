@@ -686,8 +686,8 @@ class DronePedestrianDetector:
                 # when the head fraction is <= threshold (i.e. still heavy-tailed).
                 # Stop only when the head is too small (<2) or when the head
                 # fraction becomes greater than the threshold (no longer tail-dominant).
-                if head.size < 2 or (head.size / float(current_values.size)) > threshold:
-                    break
+            if head.size < 2 or (head.size / float(current_values.size)) > threshold:
+                break
             current_values = head
         return breaks
 
