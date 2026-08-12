@@ -1,23 +1,15 @@
-"""
-PhD Research: High-Altitude 4K Pedestrian Detection System
-==========================================================
+"""Pipeline entry point for the High-Altitude 4K Drone Pedestrian Detection
+and Spatial Analysis System.
 
-Single-stream pipeline. Consumes one 4K video (or merges multi-part raw
-folders first) end-to-end (Frame 0 -> EOF):
+This script provides a single-stream CLI that processes a single 4K video
+and writes per-video outputs under ``outputs/{project_key}/`` including an
+annotated video, tracking CSV, trajectory JSON, and multi-resolution spatial
+grid visualizations (50cm and 1m). The spatial visualizations use Jiang's
+Head/Tail breaks classification to highlight high-density pedestrian
+corridors.
 
-    --input  data/raw/100MEDIA/{file}.mp4  ->  outputs/{stem}/
-    --folder data/raw/{name}/part*.mp4     ->  data/merged/{name}/{name}_full.mp4
-                                              ->  outputs/{name}/
-
-Each project directory contains:
-        ├── full_detection_{key}.mp4   (annotated 4K video)
-        ├── full_tracking_{key}.csv    (frame-by-frame tracking log)
-        └── pipeline.log               (run log)
-Track IDs are guaranteed unique and persistent across the full duration of
-each video because the tracker is initialised fresh for every run.
-
-Author: PhD Research Candidate
-Institution: AAiT (Addis Ababa Institute of Technology)
+Only top-level documentation and comments were modified; core runtime logic
+remains untouched.
 """
 
 from __future__ import annotations
@@ -349,6 +341,10 @@ def process_full_video(
                 logger.info("=" * 72)
                 logger.info("PROCESSING COMPLETE")
                 logger.info("=" * 72)
+                # Save primary spatial grid visualization. The image colors are
+                # derived from Head/Tail breaks classification which splits the
+                # heavy-tailed distribution of per-cell unique counts into
+                # discrete intervals (tail -> head) to highlight corridor peaks.
                 primary_path = project_dir / f"{project_key}_grid_counts_{grid_size}.png"
                 detector.save_spatial_grid_visualization(
                     output_path=str(primary_path),
@@ -428,7 +424,7 @@ Examples:
         "--input", "-i",
         type=str,
         help="Input video filename (resolved against data/raw/100MEDIA/) or full path",
-    )
+    )  
     input_group.add_argument(
         "--folder", "-f",
         type=str,
