@@ -1,0 +1,15 @@
+==================================================
+Lamberet3PM - 50cm
+Total Unique Pedestrians: 4318
+• White (0): 0
+• Pink (Tail): 1 to 16
+• Medium Red (Head 1): 17 to 123
+==================================================
+
+==================================================
+Lamberet3PM - 1m
+Total Unique Pedestrians: 4318
+• White (0): 0
+• Pink (Tail): 1 to 35
+• Medium Red (Head 1): 36 to 256
+==================================================

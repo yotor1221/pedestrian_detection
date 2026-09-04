@@ -1,0 +1,15 @@
+==================================================
+BoleMichael12PM - 50cm
+Total Unique Pedestrians: 5368
+• White (0): 0
+• Pink (Tail): 1 to 16
+• Medium Red (Head 1): 17 to 82
+==================================================
+
+==================================================
+BoleMichael12PM - 1m
+Total Unique Pedestrians: 5368
+• White (0): 0
+• Pink (Tail): 1 to 39
+• Medium Red (Head 1): 40 to 159
+==================================================
