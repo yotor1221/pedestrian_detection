@@ -94,6 +94,43 @@ python main.py --input DJI_0715.mp4
   rather than raw hits; this is useful for corridor analysis and flow
   estimation.
 
+## Interval Summaries and Postprocessing
+
+Each scene folder under `outputs/` can include an `intervals.txt` file. This
+file contains the total pedestrian count and the count ranges used for the
+50cm and 1m grid colors, including the empty-cell, tail, and higher-density
+Head/Tail intervals. The summaries are plain text so they can be copied into
+notes, tables, or reports without opening an image editor.
+
+Generate interval summaries for a complete scene folder:
+
+```bash
+python postprocess/get_intervals.py --folder outputs/BoleMichael12PM
+```
+
+Generate a summary for one grid image:
+
+```bash
+python postprocess/get_intervals.py --image outputs/BoleMichael12PM/BoleMichael12PM_grid_counts_50cm.png
+```
+
+The standalone postprocessing tools are kept in `postprocess/` so they can be
+run after detection has finished. `get_intervals.py` reads count JSON when it
+is available and can reconstruct cell counts from trajectory metadata. The
+result is saved as `outputs/<scene>/intervals.txt` for folder mode, or beside
+the selected image for image mode.
+
+To regenerate the color-coded grid images without changing the main detection
+pipeline, run:
+
+```bash
+python postprocess/audit_and_reshade.py --folder outputs/BoleMichael12PM
+```
+
+The regenerated images are written under
+`postprocess/outputs/<scene>/` while the original files in `outputs/<scene>/`
+remain separate.
+
 ## License
 
 See `LICENSE` for project licensing information.

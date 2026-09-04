@@ -1,0 +1,21 @@
+==================================================
+Kirkos6PM - 50cm
+Total Unique Pedestrians: 9265
+• White (0): 0
+• Pink (Tail): 1 to 16
+• Medium Red (Head 1): 17 to 30
+• Bright Red (Head 2): 31 to 45
+• Deep Crimson (Extreme Head): 46 to 63
+• Deep Crimson (Extreme Head): 64 to 117
+==================================================
+
+==================================================
+Kirkos6PM - 1m
+Total Unique Pedestrians: 9265
+• White (0): 0
+• Pink (Tail): 1 to 37
+• Medium Red (Head 1): 38 to 73
+• Bright Red (Head 2): 74 to 118
+• Deep Crimson (Extreme Head): 119 to 172
+• Deep Crimson (Extreme Head): 173 to 248
+==================================================

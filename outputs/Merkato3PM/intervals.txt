@@ -1,0 +1,17 @@
+==================================================
+Merkato3PM - 50cm
+Total Unique Pedestrians: 20726
+• White (0): 0
+• Pink (Tail): 1 to 35
+• Medium Red (Head 1): 36 to 73
+• Bright Red (Head 2): 74 to 217
+==================================================
+
+==================================================
+Merkato3PM - 1m
+Total Unique Pedestrians: 20726
+• White (0): 0
+• Pink (Tail): 1 to 86
+• Medium Red (Head 1): 87 to 179
+• Bright Red (Head 2): 180 to 461
+==================================================

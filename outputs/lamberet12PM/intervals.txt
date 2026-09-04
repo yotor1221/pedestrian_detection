@@ -1,0 +1,22 @@
+==================================================
+Lamberet12PM - 50cm
+Total Unique Pedestrians: 7534
+• White (0): 0
+• Pink (Tail): 1 to 18
+• Medium Red (Head 1): 19 to 35
+• Bright Red (Head 2): 36 to 57
+• Deep Crimson (Extreme Head): 58 to 94
+• Deep Crimson (Extreme Head): 95 to 179
+==================================================
+
+==================================================
+Lamberet12PM - 1m
+Total Unique Pedestrians: 7534
+• White (0): 0
+• Pink (Tail): 1 to 46
+• Medium Red (Head 1): 47 to 92
+• Bright Red (Head 2): 93 to 156
+• Deep Crimson (Extreme Head): 157 to 252
+• Deep Crimson (Head 4): 253 to 329
+• Deep Crimson (Extreme Head): 330 to 425
+==================================================

@@ -1,0 +1,17 @@
+==================================================
+Merkato6PM - 50cm
+Total Unique Pedestrians: 35915
+• White (0): 0
+• Pink (Tail): 1 to 64
+• Medium Red (Head 1): 65 to 130
+• Bright Red (Head 2): 131 to 327
+==================================================
+
+==================================================
+Merkato6PM - 1m
+Total Unique Pedestrians: 35915
+• White (0): 0
+• Pink (Tail): 1 to 153
+• Medium Red (Head 1): 154 to 295
+• Bright Red (Head 2): 296 to 643
+==================================================
